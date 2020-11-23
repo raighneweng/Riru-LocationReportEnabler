@@ -62,8 +62,8 @@ CONFIG_PATH="$RIRU_MODULE_PATH/config"
 if [ ! -d "$CONFIG_PATH/properties" ]; then
     ui_print "- Creating default configuration (1)"
     mkdir -p "$CONFIG_PATH/properties"
-    echo -n "310030" > "$CONFIG_PATH/properties/gsm.sim.operator.numeric"
-    echo -n "us" > "$CONFIG_PATH/properties/gsm.sim.operator.iso-country"
+    echo -n "44058" > "$CONFIG_PATH/properties/gsm.sim.operator.numeric"
+    echo -n "jp" > "$CONFIG_PATH/properties/gsm.sim.operator.iso-country"
 fi
 
 if [ ! -d "$CONFIG_PATH/packages" ]; then
@@ -72,6 +72,7 @@ if [ ! -d "$CONFIG_PATH/packages" ]; then
     touch "$CONFIG_PATH/packages/com.google.android.gsf"
     touch "$CONFIG_PATH/packages/com.google.android.gms"
     touch "$CONFIG_PATH/packages/com.google.android.apps.maps"
+    touch "$CONFIG_PATH/packages/com.zhiliaoapp.musically"
 fi
 
 set_perm $CONFIG_PATH 0 0 0600 $RIRU_SECONTEXT
