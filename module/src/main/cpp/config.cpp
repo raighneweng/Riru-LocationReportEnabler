@@ -7,8 +7,23 @@
 #include "config.h"
 #include "misc.h"
 #include "logging.h"
+#include "rirud.h"
 
 using namespace Config;
+
+namespace Config {
+
+    namespace Properties {
+
+        void Put(const char *name, const char *value);
+    }
+
+    namespace Packages {
+
+        void Add(const char *name);
+    }
+}
+
 
 #define CONFIG_PATH "/data/adb/riru/modules/" RIRU_MODULE_ID "/config"
 #define PROPS_PATH CONFIG_PATH "/properties"
@@ -51,21 +66,51 @@ void Packages::Add(const char *name) {
 }
 
 void Config::Load() {
-    foreach_dir(PROPS_PATH, [](int dirfd, struct dirent *entry) {
-        auto name = entry->d_name;
-        int fd = openat(dirfd, name, O_RDONLY);
-        if (fd == -1) return;
+    auto rirud_fd = rirud::OpenSocket();
+    if (rirud_fd != -1) {
+        LOGD("try read from rirud");
 
-        char buf[PROP_VALUE_MAX]{0};
-        if (read(fd, buf, PROP_VALUE_MAX) >= 0) {
-            Properties::Put(name, buf);
+        std::vector<std::string> prop_dirs, package_dirs;
+        if (rirud::ReadDir(rirud_fd, PROPS_PATH, prop_dirs)
+            && rirud::ReadDir(rirud_fd, PACKAGES_PATH, package_dirs)) {
+            LOGD("read from rirud succeed");
+
+            for (const auto &name : prop_dirs) {
+                char path[PATH_MAX];
+                std::string *content;
+
+                snprintf(path, PATH_MAX, "%s/%s", PROPS_PATH, name.c_str());
+
+                if (rirud::ReadFile(rirud_fd, path, &content)) {
+                    Properties::Put(name.c_str(), (*content).c_str());
+                }
+            }
+
+            for (const auto &name : package_dirs) {
+                Packages::Add(name.c_str());
+            }
         }
 
-        close(fd);
-    });
+        close(rirud_fd);
+    } else {
+        LOGD("read from rirud failed");
 
-    foreach_dir(PACKAGES_PATH, [](int, struct dirent *entry) {
-        auto name = entry->d_name;
-        Packages::Add(name);
-    });
+        foreach_dir(PROPS_PATH, [](int dirfd, struct dirent *entry, bool *) {
+            auto name = entry->d_name;
+            int fd = openat(dirfd, name, O_RDONLY);
+            if (fd == -1) return;
+
+            char buf[PROP_VALUE_MAX]{0};
+            if (read(fd, buf, PROP_VALUE_MAX) >= 0) {
+                Properties::Put(name, buf);
+            }
+
+            close(fd);
+        });
+
+        foreach_dir(PACKAGES_PATH, [](int, struct dirent *entry, bool *) {
+            auto name = entry->d_name;
+            Packages::Add(name);
+        });
+    }
 }
